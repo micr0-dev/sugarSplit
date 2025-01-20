@@ -42,3 +42,26 @@ description = "Cancel"
 key = "k"
 action = "skip"
 description = "Skip Split"
+
+[ui]
+layout = ["header", "splits", "timer", "previous_segment", "controls"]
+
+[[ui.sections]]
+component = "header"
+section = "top"
+
+[[ui.sections]]
+component = "splits"
+section = "middle"
+
+[[ui.sections]]
+component = "timer"
+section = "bottom"
+
+[[ui.sections]]
+component = "previous_segment"
+section = "bottom"
+
+[[ui.sections]]
+component = "controls"
+section = "bottom"

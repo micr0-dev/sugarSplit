@@ -89,6 +89,7 @@ type Run struct {
 	Completed      bool
 	ResettingState bool
 	Hotkeys        []Hotkey
+	UIConfig       *UIConfig
 }
 
 // ### Core Splitter functions ###
@@ -100,6 +101,11 @@ func NewRun(state *LiveSplitState, configPath string) (*Run, error) {
 		return nil, err
 	}
 
+	uiConfig, err := LoadUIConfig(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("error loading UI config: %v", err)
+	}
+
 	run := &Run{
 		State:        state,
 		CurrentSplit: -1,
@@ -109,6 +115,7 @@ func NewRun(state *LiveSplitState, configPath string) (*Run, error) {
 		Started:      false,
 		Completed:    false,
 		Hotkeys:      hotkeys,
+		UIConfig:     uiConfig,
 	}
 
 	run.UpdateHotkeyAvailability()

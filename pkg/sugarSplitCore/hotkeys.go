@@ -29,10 +29,6 @@ type Hotkey struct {
 	Available   bool
 }
 
-type HotkeyConfig struct {
-	Hotkeys []Hotkey `toml:"hotkey"`
-}
-
 // Default configuration if no config file is found
 var defaultHotkeys = []Hotkey{
 	{Key: "space", Action: ActionSplit, Description: "Start/Split"},
@@ -48,7 +44,9 @@ var defaultHotkeys = []Hotkey{
 
 // LoadHotkeys loads hotkeys from a TOML file
 func LoadHotkeys(configPath string) ([]Hotkey, error) {
-	var config HotkeyConfig
+	var config struct {
+		Hotkey []Hotkey `toml:"hotkey"`
+	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return defaultHotkeys, nil
@@ -59,7 +57,12 @@ func LoadHotkeys(configPath string) ([]Hotkey, error) {
 		return nil, fmt.Errorf("error loading hotkey config: %v", err)
 	}
 
-	return config.Hotkeys, nil
+	// If no hotkeys were loaded, use defaults
+	if len(config.Hotkey) == 0 {
+		return defaultHotkeys, nil
+	}
+
+	return config.Hotkey, nil
 }
 
 // UpdateHotkeyAvailability updates which hotkeys are currently available based on run state

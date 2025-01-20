@@ -153,40 +153,88 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // ### TUI ###
 
 func (m model) View() string {
-	var s strings.Builder
+	var top, middle, bottom strings.Builder
+	styles := initializeStyles(m.width)
 
-	// Use full terminal width for styles
-	fullWidth := m.width
-	if fullWidth < 40 { // minimum width
-		fullWidth = 40
+	top.WriteString("\n")
+
+	// Define which components go where
+	topComponents := []sugarSplitCore.UIComponent{
+		sugarSplitCore.UIHeader,
 	}
 
-	// Styles
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")).
-		Align(lipgloss.Center).
-		Width(fullWidth)
+	middleComponents := []sugarSplitCore.UIComponent{
+		sugarSplitCore.UISplits,
+	}
 
-	segmentStyle := lipgloss.NewStyle().
-		Width(fullWidth).
-		Padding(0, 1)
+	bottomComponents := []sugarSplitCore.UIComponent{
+		sugarSplitCore.UITimer,
+		sugarSplitCore.UIPreviousSegment,
+		sugarSplitCore.UIControls,
+	}
 
-	currentSegmentStyle := lipgloss.NewStyle().
-		Width(fullWidth).
-		Padding(0, 1).
-		Background(lipgloss.Color("17"))
+	// Prepare all possible components
+	components := map[sugarSplitCore.UIComponent]func() string{
+		sugarSplitCore.UIHeader:          func() string { return m.renderHeader(styles) },
+		sugarSplitCore.UISplits:          func() string { return m.renderSplits(styles) },
+		sugarSplitCore.UITimer:           func() string { return m.renderTimer(styles) },
+		sugarSplitCore.UIPreviousSegment: func() string { return m.renderPreviousSegment(styles) },
+		sugarSplitCore.UIControls:        func() string { return m.renderControls(styles) },
+	}
 
-	// Color styles remain the same
-	aheadStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82"))
-	behindStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	goldStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("220"))
-	pbStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+	// Helper function to render components in order
+	renderComponents := func(componentList []sugarSplitCore.UIComponent, builder *strings.Builder) {
+		for _, component := range m.run.UIConfig.Layout {
+			if contains(componentList, component) {
+				if renderFunc, exists := components[component]; exists {
+					builder.WriteString(renderFunc())
+				}
+			}
+		}
+	}
 
-	// Header section (top of screen)
+	// Render each section
+	renderComponents(topComponents, &top)
+	renderComponents(middleComponents, &middle)
+	renderComponents(bottomComponents, &bottom)
+
+	// Calculate available space
+	topHeight := strings.Count(top.String(), "\n")
+	bottomHeight := strings.Count(bottom.String(), "\n")
+	availableHeight := m.height - topHeight - bottomHeight
+
+	// If we have middle content, make it fill available space
+	middleContent := middle.String()
+	if middleContent != "" {
+		currentMiddleHeight := strings.Count(middleContent, "\n")
+		if currentMiddleHeight < availableHeight {
+			padding := availableHeight - currentMiddleHeight
+			middle.WriteString(strings.Repeat("\n", padding))
+		}
+	} else {
+		// If no middle content, add padding between top and bottom
+		middle.WriteString(strings.Repeat("\n", availableHeight))
+	}
+
+	// Combine all sections
+	return top.String() + middle.String() + bottom.String()
+}
+
+// Helper function to check if a slice contains an element
+func contains(slice []sugarSplitCore.UIComponent, item sugarSplitCore.UIComponent) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func (m model) renderHeader(styles Styles) string {
+	var s strings.Builder
 	headerSection := lipgloss.JoinVertical(lipgloss.Center,
-		titleStyle.Render(m.run.State.GameName),
-		titleStyle.Render(m.run.State.CategoryName),
+		styles.title.Render(m.run.State.GameName),
+		styles.title.Render(m.run.State.CategoryName),
 	)
 
 	if len(m.run.State.Segments.Segments) > 0 {
@@ -194,21 +242,27 @@ func (m model) View() string {
 		if sumOfBest > 0 {
 			headerSection = lipgloss.JoinVertical(lipgloss.Center,
 				headerSection,
-				titleStyle.Render(fmt.Sprintf("Sum of Best: %s", sugarSplitCore.FormatDuration(sumOfBest))),
+				styles.title.Render(fmt.Sprintf("Sum of Best: %s", sugarSplitCore.FormatDuration(sumOfBest))),
 			)
 		}
 	}
 
 	s.WriteString(headerSection)
 	s.WriteString("\n\n")
+	return s.String()
+}
+
+func (m model) renderSplits(styles Styles) string {
+	var s strings.Builder
 
 	// Calculate space for splits section
-	reservedSpace := 8
+	reservedSpace := 8 // Adjust based on your needs
 	maxSplits := m.height - reservedSpace
 
 	// Segments section (scrolling if needed)
 	visibleSplits := len(m.run.State.Segments.Segments)
 	if visibleSplits > maxSplits {
+		// If we have more splits than space, show a window around the current split
 		windowSize := maxSplits / 2
 		startIdx := m.run.CurrentSplit - windowSize
 		if startIdx < 0 {
@@ -235,7 +289,7 @@ func (m model) View() string {
 		if i < m.run.CurrentSplit {
 			var splitTime string
 			if m.run.Splits[i] == 0 {
-				splitTime = "-"
+				splitTime = "-" // Show dash for skipped splits
 			} else {
 				splitTime = sugarSplitCore.FormatDuration(m.run.Splits[i])
 			}
@@ -246,41 +300,38 @@ func (m model) View() string {
 			} else {
 				diff := m.run.Comparison[i]
 				if diff < 0 {
-					diffText = aheadStyle.Render(fmt.Sprintf("-%v", sugarSplitCore.FormatDuration(-diff)))
+					diffText = styles.ahead.Render(fmt.Sprintf("-%v", sugarSplitCore.FormatDuration(-diff)))
 				} else {
-					diffText = behindStyle.Render(fmt.Sprintf("+%v", sugarSplitCore.FormatDuration(diff)))
+					diffText = styles.behind.Render(fmt.Sprintf("+%v", sugarSplitCore.FormatDuration(diff)))
 				}
 			}
 
-			nameWidth := fullWidth - 32
+			nameWidth := m.width - 32 // Adjust based on your time format width
 			segmentText = fmt.Sprintf("%-*s %15s %15s", nameWidth, segment.Name, splitTime, diffText)
 
 			if m.run.IsGold[i] {
-				segmentText = goldStyle.Render(segmentText)
+				segmentText = styles.gold.Render(segmentText)
 			}
-			s.WriteString(segmentStyle.Render(segmentText))
+			s.WriteString(styles.segment.Render(segmentText))
 		} else if i == m.run.CurrentSplit {
-			nameWidth := fullWidth - 16
+			nameWidth := m.width - 16
 			segmentText = fmt.Sprintf("%-*s %15s", nameWidth, segment.Name, pbTimeStr)
-			s.WriteString(currentSegmentStyle.Render(segmentText))
+			s.WriteString(styles.currentSegment.Render(segmentText))
 		} else {
-			nameWidth := fullWidth - 16
-			segmentText = fmt.Sprintf("%-*s %15s", nameWidth, segment.Name, pbStyle.Render(pbTimeStr))
-			s.WriteString(segmentStyle.Render(segmentText))
+			nameWidth := m.width - 16
+			segmentText = fmt.Sprintf("%-*s %15s", nameWidth, segment.Name, styles.pb.Render(pbTimeStr))
+			s.WriteString(styles.segment.Render(segmentText))
 		}
 		s.WriteString("\n")
 	}
 
-	// Calculate remaining space
-	remainingSpace := m.height - visibleSplits - reservedSpace
-	if remainingSpace > 0 {
-		s.WriteString(strings.Repeat("\n", remainingSpace))
-	}
+	return s.String()
+}
 
-	// Timer section (centered)
-	timerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Align(lipgloss.Center)
+func (m model) renderTimer(styles Styles) string {
+	var s strings.Builder
+
+	timerStyle := styles.timer
 
 	if m.run.Completed {
 		timerStyle = timerStyle.Foreground(lipgloss.Color("205"))
@@ -298,12 +349,13 @@ func (m model) View() string {
 		s.WriteString("\n")
 	}
 
-	// Previous segment (left-aligned)
-	if m.run.CurrentSplit > 0 {
-		prevSegStyle := lipgloss.NewStyle().
-			Width(fullWidth).
-			Padding(0, 1)
+	return s.String()
+}
 
+func (m model) renderPreviousSegment(styles Styles) string {
+	var s strings.Builder
+
+	if m.run.CurrentSplit > 0 {
 		prevIndex := m.run.CurrentSplit - 1
 		segmentTime := m.run.GetSegmentTime(prevIndex)
 		pbSegmentTime := m.run.GetPBSegmentTime(prevIndex)
@@ -313,41 +365,71 @@ func (m model) View() string {
 			var diffText string
 
 			if diff < 0 {
-				diffText = aheadStyle.Render(fmt.Sprintf("-%v", sugarSplitCore.FormatDuration(-diff)))
+				diffText = styles.ahead.Render(fmt.Sprintf("-%v", sugarSplitCore.FormatDuration(-diff)))
 			} else {
-				diffText = behindStyle.Render(fmt.Sprintf("+%v", sugarSplitCore.FormatDuration(diff)))
+				diffText = styles.behind.Render(fmt.Sprintf("+%v", sugarSplitCore.FormatDuration(diff)))
 			}
 
-			s.WriteString(prevSegStyle.Render(fmt.Sprintf("Previous Segment: %s", diffText)))
+			s.WriteString(styles.segment.Render(fmt.Sprintf("Previous Segment: %s", diffText)))
 			s.WriteString("\n")
 		}
 	}
 
-	// Reset confirmation (centered)
-	if m.resetState != noReset {
-		confirmStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("196")).
-			Background(lipgloss.Color("236")).
-			Padding(1).
-			Width(fullWidth).
-			Align(lipgloss.Center)
+	return s.String()
+}
 
-		if m.resetState == confirmingReset {
-			s.WriteString(confirmStyle.Render("Reset run? (Y)es, (S)ave and reset, (N)o"))
-		}
-	}
+func (m model) renderControls(styles Styles) string {
+	var s strings.Builder
 
-	// Controls (bottom-aligned, centered)
-	controlStyle := lipgloss.NewStyle().
-		Width(fullWidth).
-		Align(lipgloss.Center)
-
-	controls := m.run.GetAvailableHotkeys()
-
-	s.WriteString(controlStyle.Render(controls))
+	// Controls
+	s.WriteString(styles.controls.Render(m.run.GetAvailableHotkeys()))
 
 	return s.String()
+}
+
+// Styles struct to keep all styles together
+type Styles struct {
+	title          lipgloss.Style
+	segment        lipgloss.Style
+	currentSegment lipgloss.Style
+	ahead          lipgloss.Style
+	behind         lipgloss.Style
+	gold           lipgloss.Style
+	pb             lipgloss.Style
+	timer          lipgloss.Style
+	controls       lipgloss.Style
+}
+
+func initializeStyles(width int) Styles {
+	fullWidth := width
+	if fullWidth < 40 {
+		fullWidth = 40
+	}
+
+	return Styles{
+		title: lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("205")).
+			Align(lipgloss.Center).
+			Width(fullWidth),
+		segment: lipgloss.NewStyle().
+			Width(fullWidth).
+			Padding(0, 1),
+		currentSegment: lipgloss.NewStyle().
+			Width(fullWidth).
+			Padding(0, 1).
+			Background(lipgloss.Color("17")),
+		ahead:  lipgloss.NewStyle().Foreground(lipgloss.Color("82")),
+		behind: lipgloss.NewStyle().Foreground(lipgloss.Color("196")),
+		gold:   lipgloss.NewStyle().Foreground(lipgloss.Color("220")),
+		pb:     lipgloss.NewStyle().Foreground(lipgloss.Color("244")),
+		timer: lipgloss.NewStyle().
+			Bold(true).
+			Align(lipgloss.Center),
+		controls: lipgloss.NewStyle().
+			Width(fullWidth).
+			Align(lipgloss.Center),
+	}
 }
 
 // ### Utility ###
