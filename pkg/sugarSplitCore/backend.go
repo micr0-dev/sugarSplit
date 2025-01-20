@@ -76,6 +76,7 @@ type Time struct {
 	RealTime string `xml:"RealTime"`
 }
 
+// Run represents the current state of a run
 type Run struct {
 	State          *LiveSplitState
 	CurrentSplit   int
@@ -89,6 +90,8 @@ type Run struct {
 	ResettingState bool
 	Hotkeys        []Hotkey
 }
+
+// ### Core Splitter functions ###
 
 // NewRun creates a new Run instance from a LiveSplitState
 func NewRun(state *LiveSplitState, configPath string) (*Run, error) {
@@ -110,56 +113,6 @@ func NewRun(state *LiveSplitState, configPath string) (*Run, error) {
 
 	run.UpdateHotkeyAvailability()
 	return run, nil
-}
-
-// GetSegmentTime returns the duration of a specific segment
-func (r *Run) GetSegmentTime(splitIndex int) time.Duration {
-	if splitIndex < 0 || splitIndex >= len(r.Splits) {
-		return 0
-	}
-
-	if r.Splits[splitIndex] == 0 {
-		return 0
-	}
-
-	if splitIndex == 0 {
-		return r.Splits[0]
-	}
-
-	return r.Splits[splitIndex] - r.Splits[splitIndex-1]
-}
-
-// GetPBSegmentTime returns the Personal Best duration for a specific segment
-func (r *Run) GetPBSegmentTime(splitIndex int) time.Duration {
-	if splitIndex < 0 || splitIndex >= len(r.State.Segments.Segments) {
-		return 0
-	}
-
-	segment := r.State.Segments.Segments[splitIndex]
-	if len(segment.SplitTimes.SplitTime) == 0 {
-		return 0
-	}
-
-	pbTime := ParseTime(segment.SplitTimes.SplitTime[0].RealTime)
-
-	if splitIndex == 0 {
-		return pbTime
-	}
-
-	prevPBTime := ParseTime(r.State.Segments.Segments[splitIndex-1].SplitTimes.SplitTime[0].RealTime)
-	return pbTime - prevPBTime
-}
-
-// IsPB checks if the current run is a Personal Best
-func (r *Run) IsPB() bool {
-	if r.CurrentSplit != len(r.State.Segments.Segments) {
-		return false
-	}
-
-	lastSplitTime := r.Splits[len(r.Splits)-1]
-	currentPB := ParseTime(r.State.Segments.Segments[len(r.Splits)-1].SplitTimes.SplitTime[0].RealTime)
-
-	return lastSplitTime < currentPB || currentPB == 0
 }
 
 // SaveRun saves the current run state to file
@@ -187,7 +140,7 @@ func (r *Run) SaveRun(filename string) error {
 			// Add to segment history
 			newTime := Time{
 				ID:       fmt.Sprintf("%d", newAttemptID),
-				RealTime: FormatDurationLSS(split),
+				RealTime: formatDurationLSS(split),
 			}
 			r.State.Segments.Segments[i].SegmentHistory.Time = append(
 				r.State.Segments.Segments[i].SegmentHistory.Time,
@@ -202,7 +155,7 @@ func (r *Run) SaveRun(filename string) error {
 				} else {
 					splitTime = split - r.Splits[i-1]
 				}
-				r.State.Segments.Segments[i].BestSegmentTime.RealTime = FormatDurationLSS(splitTime)
+				r.State.Segments.Segments[i].BestSegmentTime.RealTime = formatDurationLSS(splitTime)
 			}
 
 			// Update PB split time if this is a PB run
@@ -213,7 +166,7 @@ func (r *Run) SaveRun(filename string) error {
 						SplitTime{Name: "Personal Best"},
 					)
 				}
-				r.State.Segments.Segments[i].SplitTimes.SplitTime[0].RealTime = FormatDurationLSS(split)
+				r.State.Segments.Segments[i].SplitTimes.SplitTime[0].RealTime = formatDurationLSS(split)
 			}
 		}
 	}
@@ -268,6 +221,26 @@ func (r *Run) UndoSplit() {
 	}
 }
 
+// Skip skips the current split
+func (r *Run) SkipSplit() {
+	if !r.Started || r.Completed || r.CurrentSplit >= len(r.State.Segments.Segments) {
+		return
+	}
+
+	// Set current split as skipped (we'll use 0 duration to indicate a skip)
+	r.Splits[r.CurrentSplit] = 0
+	r.Comparison[r.CurrentSplit] = 0
+	r.IsGold[r.CurrentSplit] = false
+
+	r.CurrentSplit++
+	if r.CurrentSplit >= len(r.State.Segments.Segments) {
+		r.Completed = true
+		r.Started = false
+	}
+
+	r.UpdateHotkeyAvailability()
+}
+
 // Reset resets the run state
 func (r *Run) Reset() {
 	r.Started = false
@@ -306,6 +279,11 @@ func SaveRun(run *LiveSplitState, filename string) error {
 	return ioutil.WriteFile(filename, data, 0644)
 }
 
+// ### End of Core Splitter functions ###
+
+// ### Utility functions ###
+
+// FormatDuration formats a time.Duration to a human-readable
 func FormatDuration(d time.Duration) string {
 	d = d.Round(time.Millisecond)
 	h := d / time.Hour
@@ -322,7 +300,8 @@ func FormatDuration(d time.Duration) string {
 	return fmt.Sprintf("%02d:%02d.%03d", m, s, ms)
 }
 
-func FormatDurationLSS(d time.Duration) string {
+// formatDurationLSS formats a time.Duration to a LiveSplit-style string
+func formatDurationLSS(d time.Duration) string {
 	d = d.Round(time.Millisecond)
 	h := d / time.Hour
 	d -= h * time.Hour
@@ -335,6 +314,7 @@ func FormatDurationLSS(d time.Duration) string {
 	return fmt.Sprintf("%02d:%02d:%02d.%07d", h, m, s, ms*10000)
 }
 
+// ParseTime parses a time string to a time.Duration
 func ParseTime(timeStr string) time.Duration {
 	if timeStr == "" {
 		return 0
@@ -365,6 +345,7 @@ func ParseTime(timeStr string) time.Duration {
 		time.Duration(fraction*float64(time.Second))
 }
 
+// GetSumOfBest returns the sum of best segment times
 func GetSumOfBest(segments []Segment) time.Duration {
 	var sum time.Duration
 	for _, segment := range segments {
@@ -374,4 +355,54 @@ func GetSumOfBest(segments []Segment) time.Duration {
 		}
 	}
 	return sum
+}
+
+// GetSegmentTime returns the duration of a specific segment
+func (r *Run) GetSegmentTime(splitIndex int) time.Duration {
+	if splitIndex < 0 || splitIndex >= len(r.Splits) {
+		return 0
+	}
+
+	if r.Splits[splitIndex] == 0 {
+		return 0
+	}
+
+	if splitIndex == 0 {
+		return r.Splits[0]
+	}
+
+	return r.Splits[splitIndex] - r.Splits[splitIndex-1]
+}
+
+// GetPBSegmentTime returns the Personal Best duration for a specific segment
+func (r *Run) GetPBSegmentTime(splitIndex int) time.Duration {
+	if splitIndex < 0 || splitIndex >= len(r.State.Segments.Segments) {
+		return 0
+	}
+
+	segment := r.State.Segments.Segments[splitIndex]
+	if len(segment.SplitTimes.SplitTime) == 0 {
+		return 0
+	}
+
+	pbTime := ParseTime(segment.SplitTimes.SplitTime[0].RealTime)
+
+	if splitIndex == 0 {
+		return pbTime
+	}
+
+	prevPBTime := ParseTime(r.State.Segments.Segments[splitIndex-1].SplitTimes.SplitTime[0].RealTime)
+	return pbTime - prevPBTime
+}
+
+// IsPB checks if the current run is a Personal Best
+func (r *Run) IsPB() bool {
+	if r.CurrentSplit != len(r.State.Segments.Segments) {
+		return false
+	}
+
+	lastSplitTime := r.Splits[len(r.Splits)-1]
+	currentPB := ParseTime(r.State.Segments.Segments[len(r.Splits)-1].SplitTimes.SplitTime[0].RealTime)
+
+	return lastSplitTime < currentPB || currentPB == 0
 }

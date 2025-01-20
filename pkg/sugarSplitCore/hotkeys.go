@@ -19,13 +19,14 @@ const (
 	ActionConfirm   Action = "confirm"
 	ActionSaveReset Action = "save_reset"
 	ActionCancel    Action = "cancel"
+	ActionSkip      Action = "skip"
 )
 
 type Hotkey struct {
 	Key         string `toml:"key"`
 	Action      Action `toml:"action"`
 	Description string `toml:"description"`
-	Available   bool   // Determines if the hotkey is currently available
+	Available   bool
 }
 
 type HotkeyConfig struct {
@@ -42,8 +43,10 @@ var defaultHotkeys = []Hotkey{
 	{Key: "s", Action: ActionSaveReset, Description: "Save and Reset"},
 	{Key: "n", Action: ActionCancel, Description: "Cancel"},
 	{Key: "esc", Action: ActionCancel, Description: "Cancel"},
+	{Key: "k", Action: ActionSkip, Description: "Skip Split"},
 }
 
+// LoadHotkeys loads hotkeys from a TOML file
 func LoadHotkeys(configPath string) ([]Hotkey, error) {
 	var config HotkeyConfig
 
@@ -83,6 +86,8 @@ func (r *Run) UpdateHotkeyAvailability() {
 			r.Hotkeys[i].Available = r.Started || r.Completed
 		case ActionUndo:
 			r.Hotkeys[i].Available = r.Started && r.CurrentSplit > 0 && !r.Completed
+		case ActionSkip:
+			r.Hotkeys[i].Available = r.Started && !r.Completed && r.CurrentSplit < len(r.State.Segments.Segments)
 		case ActionQuit:
 			r.Hotkeys[i].Available = true
 		case ActionConfirm, ActionSaveReset, ActionCancel:

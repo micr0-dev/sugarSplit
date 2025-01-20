@@ -37,3 +37,8 @@ description = "Cancel"
 key = "esc"
 action = "cancel"
 description = "Cancel"
+
+[[hotkey]]
+key = "k"
+action = "skip"
+description = "Skip Split"
