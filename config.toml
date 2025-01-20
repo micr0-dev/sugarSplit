@@ -1,0 +1,39 @@
+[[hotkey]]
+key = "space"
+action = "split"
+description = "Start/Split"
+
+[[hotkey]]
+key = "r"
+action = "reset"
+description = "Reset"
+
+[[hotkey]]
+key = "z"
+action = "undo"
+description = "Undo Split"
+
+[[hotkey]]
+key = "q"
+action = "quit"
+description = "Quit"
+
+[[hotkey]]
+key = "y"
+action = "confirm"
+description = "Confirm"
+
+[[hotkey]]
+key = "s"
+action = "save_reset"
+description = "Save and Reset"
+
+[[hotkey]]
+key = "n"
+action = "cancel"
+description = "Cancel"
+
+[[hotkey]]
+key = "esc"
+action = "cancel"
+description = "Cancel"

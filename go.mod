@@ -1,8 +1,9 @@
-module tSplit
+module sugarSplit
 
 go 1.23.4
 
 require (
+	github.com/BurntSushi/toml v1.4.0
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/lipgloss v1.0.0
 )
