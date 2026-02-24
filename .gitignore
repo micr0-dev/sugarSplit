@@ -29,3 +29,6 @@ sugarSplit
 
 # splits files
 *.lss
+
+# build output
+dist/
