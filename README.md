@@ -2,6 +2,8 @@
 
 a terminal-based speedrun timer. basically livesplit but in your terminal. works great on linux where livesplit can be janky over wine.
 
+<img width="671" height="719" alt="2026-02-24-055119_hyprshot" src="https://github.com/user-attachments/assets/70892bc9-29d0-4305-bb09-ac0ed8f18639" />
+
 **unlike other TUI timers, sugarSplit uses actual LiveSplit `.lss` files.** your splits, golds, and PBs are fully compatible with LiveSplit. import your existing splits or share them with livesplit users.
 
 ## install
