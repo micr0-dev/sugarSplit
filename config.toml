@@ -43,6 +43,11 @@ key = "k"
 action = "skip"
 description = "Skip Split"
 
+[[hotkey]]
+key = "e"
+action = "edit"
+description = "Edit Splits"
+
 [ui]
 layout = ["header", "splits", "timer", "previous_segment", "controls"]
 

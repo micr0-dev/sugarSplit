@@ -3,7 +3,7 @@ package sugarSplitCore
 import (
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 )
@@ -264,7 +264,7 @@ func (r *Run) Reset() {
 
 // Helper functions
 func LoadRun(filename string) (*LiveSplitState, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file: %v", err)
 	}
@@ -283,7 +283,7 @@ func SaveRun(run *LiveSplitState, filename string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename, data, 0644)
+	return os.WriteFile(filename, data, 0644)
 }
 
 // ### End of Core Splitter functions ###
@@ -412,4 +412,98 @@ func (r *Run) IsPB() bool {
 	currentPB := ParseTime(r.State.Segments.Segments[len(r.Splits)-1].SplitTimes.SplitTime[0].RealTime)
 
 	return lastSplitTime < currentPB || currentPB == 0
+}
+
+// ReinitializeArrays reinitializes the run arrays after segment changes
+func (r *Run) ReinitializeArrays() {
+	n := len(r.State.Segments.Segments)
+	r.Splits = make([]time.Duration, n)
+	r.IsGold = make([]bool, n)
+	r.Comparison = make([]time.Duration, n)
+	r.CurrentSplit = -1
+}
+
+// ### Segment manipulation methods ###
+
+// AddSegment adds a new segment after the specified index
+func (state *LiveSplitState) AddSegment(index int, name string) {
+	newSegment := Segment{
+		Name: name,
+		Icon: "",
+		SplitTimes: SplitTimes{
+			SplitTime: []SplitTime{{Name: "Personal Best", RealTime: ""}},
+		},
+		BestSegmentTime: BestSegmentTime{RealTime: ""},
+		SegmentHistory:  SegmentHistory{Time: []Time{}},
+	}
+
+	segments := state.Segments.Segments
+	// Insert after index
+	if index >= len(segments)-1 {
+		state.Segments.Segments = append(segments, newSegment)
+	} else {
+		state.Segments.Segments = append(segments[:index+1], append([]Segment{newSegment}, segments[index+1:]...)...)
+	}
+}
+
+// RemoveSegment removes a segment at the specified index
+func (state *LiveSplitState) RemoveSegment(index int) {
+	if index < 0 || index >= len(state.Segments.Segments) {
+		return
+	}
+	segments := state.Segments.Segments
+	state.Segments.Segments = append(segments[:index], segments[index+1:]...)
+}
+
+// RenameSegment changes the name of a segment
+func (state *LiveSplitState) RenameSegment(index int, name string) {
+	if index >= 0 && index < len(state.Segments.Segments) {
+		state.Segments.Segments[index].Name = name
+	}
+}
+
+// MoveSegmentUp swaps a segment with the one above it
+func (state *LiveSplitState) MoveSegmentUp(index int) {
+	if index > 0 && index < len(state.Segments.Segments) {
+		segments := state.Segments.Segments
+		segments[index], segments[index-1] = segments[index-1], segments[index]
+	}
+}
+
+// MoveSegmentDown swaps a segment with the one below it
+func (state *LiveSplitState) MoveSegmentDown(index int) {
+	if index >= 0 && index < len(state.Segments.Segments)-1 {
+		segments := state.Segments.Segments
+		segments[index], segments[index+1] = segments[index+1], segments[index]
+	}
+}
+
+// CreateBlankRun creates a new empty LiveSplit state
+func CreateBlankRun(gameName, categoryName string) *LiveSplitState {
+	return &LiveSplitState{
+		GameName:     gameName,
+		CategoryName: categoryName,
+		Metadata: Metadata{
+			Run: MetadataRun{Version: "1.7.0"},
+		},
+		Offset:       "00:00:00",
+		AttemptCount: 0,
+		AttemptHistory: AttemptHistory{
+			Attempt: []Attempt{},
+		},
+		Segments: Segments{
+			Segments: []Segment{
+				{
+					Name: "Split 1",
+					Icon: "",
+					SplitTimes: SplitTimes{
+						SplitTime: []SplitTime{{Name: "Personal Best", RealTime: ""}},
+					},
+					BestSegmentTime: BestSegmentTime{RealTime: ""},
+					SegmentHistory:  SegmentHistory{Time: []Time{}},
+				},
+			},
+		},
+		AutoSplitterSettings: "",
+	}
 }

@@ -20,6 +20,7 @@ const (
 	ActionSaveReset Action = "save_reset"
 	ActionCancel    Action = "cancel"
 	ActionSkip      Action = "skip"
+	ActionEdit      Action = "edit"
 )
 
 type Hotkey struct {
@@ -40,6 +41,7 @@ var defaultHotkeys = []Hotkey{
 	{Key: "n", Action: ActionCancel, Description: "Cancel"},
 	{Key: "esc", Action: ActionCancel, Description: "Cancel"},
 	{Key: "k", Action: ActionSkip, Description: "Skip Split"},
+	{Key: "e", Action: ActionEdit, Description: "Edit Splits"},
 }
 
 // LoadHotkeys loads hotkeys from a TOML file
@@ -93,6 +95,8 @@ func (r *Run) UpdateHotkeyAvailability() {
 			r.Hotkeys[i].Available = r.Started && !r.Completed && r.CurrentSplit < len(r.State.Segments.Segments)
 		case ActionQuit:
 			r.Hotkeys[i].Available = true
+		case ActionEdit:
+			r.Hotkeys[i].Available = !r.Started && !r.Completed
 		case ActionConfirm, ActionSaveReset, ActionCancel:
 			r.Hotkeys[i].Available = false
 		}

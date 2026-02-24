@@ -1,0 +1,51 @@
+<Run>
+  <GameName>New Game</GameName>
+  <CategoryName>Any%</CategoryName>
+  <Metadata>
+    <Run version="1.7.0"></Run>
+  </Metadata>
+  <Offset>00:00:00</Offset>
+  <AttemptCount>0</AttemptCount>
+  <AttemptHistory></AttemptHistory>
+  <Segments>
+    <Segment>
+      <Name>Da game</Name>
+      <Icon></Icon>
+      <SplitTimes>
+        <SplitTime name="Personal Best">
+          <RealTime></RealTime>
+        </SplitTime>
+      </SplitTimes>
+      <BestSegmentTime>
+        <RealTime></RealTime>
+      </BestSegmentTime>
+      <SegmentHistory></SegmentHistory>
+    </Segment>
+    <Segment>
+      <Name>2 Stage</Name>
+      <Icon></Icon>
+      <SplitTimes>
+        <SplitTime name="Personal Best">
+          <RealTime></RealTime>
+        </SplitTime>
+      </SplitTimes>
+      <BestSegmentTime>
+        <RealTime></RealTime>
+      </BestSegmentTime>
+      <SegmentHistory></SegmentHistory>
+    </Segment>
+    <Segment>
+      <Name>Another one</Name>
+      <Icon></Icon>
+      <SplitTimes>
+        <SplitTime name="Personal Best">
+          <RealTime></RealTime>
+        </SplitTime>
+      </SplitTimes>
+      <BestSegmentTime>
+        <RealTime></RealTime>
+      </BestSegmentTime>
+      <SegmentHistory></SegmentHistory>
+    </Segment>
+  </Segments>
+</Run>
