@@ -9,7 +9,11 @@ import (
 	"sugarSplit/pkg/sugarSplitCore"
 )
 
+const autoSplitPort = 16834
+
 func main() {
+	shared := &sugarSplitCore.SharedState{}
+
 	if len(os.Args) == 3 && os.Args[1] == "--new" {
 		// Create new LSS file
 		filename := os.Args[2]
@@ -22,9 +26,12 @@ func main() {
 		fmt.Printf("Created %s\n", filename)
 
 		// Open in edit mode
-		m := initialModel(filename)
+		m := initialModel(filename, shared)
 		m.mode = modeEditSplits
 		p := tea.NewProgram(m)
+		sugarSplitCore.StartServer(autoSplitPort, shared, func(cmd sugarSplitCore.AutoSplitCommand) {
+			p.Send(autoSplitMsg{cmd: cmd})
+		})
 		if err := p.Start(); err != nil {
 			fmt.Printf("Error running program: %v\n", err)
 			os.Exit(1)
@@ -38,8 +45,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := initialModel(os.Args[1])
+	m := initialModel(os.Args[1], shared)
 	p := tea.NewProgram(m)
+	sugarSplitCore.StartServer(autoSplitPort, shared, func(cmd sugarSplitCore.AutoSplitCommand) {
+		p.Send(autoSplitMsg{cmd: cmd})
+	})
 
 	if err := p.Start(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)

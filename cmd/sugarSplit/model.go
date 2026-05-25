@@ -26,19 +26,24 @@ const (
 
 type tickMsg time.Time
 
+type autoSplitMsg struct {
+	cmd sugarSplitCore.AutoSplitCommand
+}
+
 type model struct {
 	run           *sugarSplitCore.Run
 	width, height int
 	resetState    resetState
 	filename      string
 	mode          appMode
+	serverState   *sugarSplitCore.SharedState
 	// Edit mode fields
 	editIndex int
 	editInput string
 	editing   bool
 }
 
-func initialModel(filename string) model {
+func initialModel(filename string, shared *sugarSplitCore.SharedState) model {
 	state, err := sugarSplitCore.LoadRun(filename)
 	if err != nil {
 		fmt.Printf("Error loading run: %v\n", err)
@@ -52,11 +57,12 @@ func initialModel(filename string) model {
 	}
 
 	return model{
-		run:        run,
-		resetState: noReset,
-		filename:   filename,
-		mode:       modeNormal,
-		editIndex:  0,
+		run:         run,
+		resetState:  noReset,
+		filename:    filename,
+		mode:        modeNormal,
+		editIndex:   0,
+		serverState: shared,
 	}
 }
 

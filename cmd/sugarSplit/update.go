@@ -9,6 +9,40 @@ import (
 	"sugarSplit/pkg/sugarSplitCore"
 )
 
+func (m model) handleAutoSplit(cmd sugarSplitCore.AutoSplitCommand) (tea.Model, tea.Cmd) {
+	switch cmd {
+	case sugarSplitCore.CmdSplit:
+		if !m.run.Started {
+			m.run.Started = true
+			m.run.StartTime = time.Now()
+			m.run.CurrentSplit = 0
+			m.run.UpdateHotkeyAvailability()
+			return m, tick()
+		} else if !m.run.Completed && m.run.CurrentSplit < len(m.run.State.Segments.Segments) {
+			m.run.Split(m.run.CurrentTime)
+			m.run.UpdateHotkeyAvailability()
+		}
+	case sugarSplitCore.CmdReset:
+		m.run.Reset()
+	case sugarSplitCore.CmdUndo:
+		if m.run.Started && m.run.CurrentSplit > 0 && !m.run.Completed {
+			m.run.UndoSplit()
+			m.run.UpdateHotkeyAvailability()
+		} else if m.run.Completed {
+			m.run.UndoSplit()
+			m.run.StartTime = time.Now().Add(-m.run.CurrentTime)
+			m.run.UpdateHotkeyAvailability()
+			return m, tick()
+		}
+	case sugarSplitCore.CmdSkip:
+		if m.run.Started && !m.run.Completed {
+			m.run.SkipSplit()
+			m.run.UpdateHotkeyAvailability()
+		}
+	}
+	return m, nil
+}
+
 func (m model) handleKey(key string) (tea.Model, tea.Cmd) {
 	action, exists := m.run.GetAction(key)
 	if !exists {
@@ -98,9 +132,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m.handleKey(msg.String())
 
+	case autoSplitMsg:
+		return m.handleAutoSplit(msg.cmd)
+
 	case tickMsg:
 		if m.run.Started && !m.run.ResettingState {
 			m.run.CurrentTime = time.Since(m.run.StartTime)
+		}
+		if m.serverState != nil {
+			m.serverState.Update(m.run)
 		}
 		return m, tick()
 

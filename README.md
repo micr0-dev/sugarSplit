@@ -56,6 +56,18 @@ press `e` to edit your splits
 
 (arrow keys also work instead of j/k)
 
+## auto splitter
+
+sugarSplit runs a local HTTP server on `127.0.0.1:16834` for auto splitter scripts.
+
+| method | endpoint | action |
+|--------|----------|--------|
+| `POST` | `/split` | start timer or split |
+| `POST` | `/reset` | reset |
+| `POST` | `/undo` | undo last split |
+| `POST` | `/skip` | skip current split |
+| `GET` | `/state` | current run state as JSON |
+
 ## config
 
 config lives in `config.toml` in the same directory. you can customize hotkeys and ui layout.
